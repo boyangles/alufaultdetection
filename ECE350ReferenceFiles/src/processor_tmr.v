@@ -1,4 +1,4 @@
-module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out, lcd_write, lcd_data, debug_data, debug_addr, out1, out2
+module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out, lcd_write, lcd_data, debug_data, debug_addr, out1, out2
 /* Fetch outputs */
 //,						inPC_F_output 						// Output to the PC latch for the next instruction [31:0]
 //,						stall_ctrl_output					// Describes whether to stall on a data hazard
@@ -84,6 +84,17 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 ,						reg22_output
 ,						reg23_output
 ,						reg24_output
+
+
+/**
+*	ECE 554 FINAL PROJECT OUTPUTS:
+*/
+,						errorDetected_tmr_aluResultX
+,						invalidOutput_tmr_aluResultX
+,						errorDetected_tmr_alu_a_ne_b_X
+,						invalidOutput_tmr_alu_a_ne_b_X
+,						errorDetected_tmr_alu_a_lt_b_X
+,						invalidOutput_tmr_alu_a_lt_b_X
 );
 
 	input				button_drop_in, button_cycle_in;
@@ -191,6 +202,15 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	output [31:0] reg23_output;							assign reg23_output = regFileOutput23_D;
 	output [31:0] reg24_output;							assign reg24_output = regFileOutput24_D;
 	
+	/**
+	*	ECE 554 Outputs:
+	*/
+	output errorDetected_tmr_aluResultX;
+	output invalidOutput_tmr_aluResultX;
+	output errorDetected_tmr_alu_a_ne_b_X;
+	output invalidOutput_tmr_alu_a_ne_b_X;
+	output errorDetected_tmr_alu_a_lt_b_X;
+	output invalidOutput_tmr_alu_a_lt_b_X;
 	
 	
 	
@@ -1002,13 +1022,78 @@ assign multDiv_status_X[0] = multDiv_status_1bit_X;
 wire [31:0] alu_result_X;
 wire a_ne_b_X, a_lt_b_X;
 
-abl17_alu myabl17_alu(		.data_operandA(dataA_X), 
-									.data_operandB(aluSrc_select_X), 
-									.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
-									.ctrl_shiftamt(shamt_X), 
-									.data_result(alu_result_X), 
-									.isNotEqual(a_ne_b_X), 
-									.isLessThan(a_lt_b_X)
+/**
+* TMR-ALU with ALU module:
+*/
+wire [31:0] alu_result_X_tmr1, alu_result_X_tmr2, alu_result_X_tmr3;
+wire a_ne_b_X_tmr1, a_lt_b_X_tmr1;
+wire a_ne_b_X_tmr2, a_lt_b_X_tmr2;
+wire a_ne_b_X_tmr3, a_lt_b_X_tmr3;
+
+abl17_alu myabl17_alu_tmr1(	.data_operandA(dataA_X), 
+										.data_operandB(aluSrc_select_X), 
+										.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
+										.ctrl_shiftamt(shamt_X), 
+										.data_result(alu_result_X_tmr1), 
+										.isNotEqual(a_ne_b_X_tmr1), 
+										.isLessThan(a_lt_b_X_tmr1)
+);
+
+abl17_alu myabl17_alu_tmr2(	.data_operandA(dataA_X), 
+										.data_operandB(aluSrc_select_X), 
+										.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
+										.ctrl_shiftamt(shamt_X), 
+										.data_result(alu_result_X_tmr2), 
+										.isNotEqual(a_ne_b_X_tmr2), 
+										.isLessThan(a_lt_b_X_tmr2)
+);
+
+abl17_alu myabl17_alu_tmr3(	.data_operandA(dataA_X), 
+										.data_operandB(aluSrc_select_X), 
+										.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
+										.ctrl_shiftamt(shamt_X), 
+										.data_result(alu_result_X_tmr3), 
+										.isNotEqual(a_ne_b_X_tmr3), 
+										.isLessThan(a_lt_b_X_tmr3)
+);
+
+/* TMR for 32-bit alu_result_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_aluResultX
+		2. invalidOutput_tmr_aluResultX
+*/
+generic_ternary_voter_32bit tmr_alu_resultX(	.a(alu_result_X_tmr1), 
+															.b(alu_result_X_tmr2), 
+															.c(alu_result_X_tmr3), 
+															.errorDetected(errorDetected_tmr_aluResultX), 
+															.invalidOutput(invalidOutput_tmr_aluResultX), 
+															.out(alu_result_X)
+);
+
+/* TMR for 1-bit a_ne_b_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_alu_a_ne_b_X
+		2. invalidOutput_tmr_alu_a_ne_b_X
+*/
+generic_ternary_voter_1bit tmr_alu_a_ne_b_X(	.a(a_ne_b_X_tmr1), 
+															.b(a_ne_b_X_tmr2), 
+															.c(a_ne_b_X_tmr3), 
+															.errorDetected(errorDetected_tmr_alu_a_ne_b_X), 
+															.invalidOutput(invalidOutput_tmr_alu_a_ne_b_X), 
+															.out(a_ne_b_X)
+);
+
+/* TMR for 32-bit alu_result_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_alu_a_lt_b_X
+		2. invalidOutput_tmr_alu_a_lt_b_X
+*/
+generic_ternary_voter_1bit tmr_alu_a_lt_b_X(	.a(a_lt_b_X_tmr1), 
+															.b(a_lt_b_X_tmr2), 
+															.c(a_lt_b_X_tmr3), 
+															.errorDetected(errorDetected_tmr_alu_a_lt_b_X), 
+															.invalidOutput(invalidOutput_tmr_alu_a_lt_b_X), 
+															.out(a_lt_b_X)
 );
 
 /* Cyc Module: */
@@ -2658,6 +2743,34 @@ module generic_ternary_voter_32bit(a, b, c, errorDetected, invalidOutput, out);
 	assign a_nequals_b = |a_equals_b_32_bits;
 	assign b_nequals_c = |b_equals_c_32_bits;
 	assign a_nequals_c = |a_equals_c_32_bits;
+	
+	assign errorDetected = a_nequals_b | b_nequals_c | a_nequals_c;
+	assign invalidOutput = (a_nequals_b & b_nequals_c) | (a_nequals_b & a_nequals_c) | (b_nequals_c & a_nequals_c);
+	
+	assign out = (a & b) | (b & c) | (a & c);
+endmodule
+
+module generic_ternary_voter_1bit(a, b, c, errorDetected, invalidOutput, out);
+	input a, b, c;
+	output out;
+	output errorDetected;
+	output invalidOutput;
+	
+	wire a_equals_b_1_bits; 
+	wire b_equals_c_1_bits;
+	wire a_equals_c_1_bits;
+	
+	assign a_equals_b_1_bits = a ^ b;
+	assign b_equals_c_1_bits = b ^ c;
+	assign a_equals_c_1_bits = a ^ c;
+	
+	wire a_nequals_b;
+	wire b_nequals_c;
+	wire a_nequals_c;
+	
+	assign a_nequals_b = |a_equals_b_1_bits;
+	assign b_nequals_c = |b_equals_c_1_bits;
+	assign a_nequals_c = |a_equals_c_1_bits;
 	
 	assign errorDetected = a_nequals_b | b_nequals_c | a_nequals_c;
 	assign invalidOutput = (a_nequals_b & b_nequals_c) | (a_nequals_b & a_nequals_c) | (b_nequals_c & a_nequals_c);
