@@ -1,4 +1,4 @@
-module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out, lcd_write, lcd_data, debug_data, debug_addr, out1, out2
+module processor_argus(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out, lcd_write, lcd_data, debug_data, debug_addr, out1, out2
 /* Fetch outputs */
 //,						inPC_F_output 						// Output to the PC latch for the next instruction [31:0]
 //,						stall_ctrl_output					// Describes whether to stall on a data hazard
@@ -84,6 +84,14 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 ,						reg22_output
 ,						reg23_output
 ,						reg24_output
+
+
+/**
+* ECE 554 FINAL PROJECT Outputs:
+*/
+,						multdiv_remainder
+,						multdiv_output_has_error
+,						multdiv_checker_is_enabled
 );
 
 	input				button_drop_in, button_cycle_in;
@@ -191,7 +199,12 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	output [31:0] reg23_output;							assign reg23_output = regFileOutput23_D;
 	output [31:0] reg24_output;							assign reg24_output = regFileOutput24_D;
 	
-	
+	/**
+	*	ECE 554 Final Project Outputs:
+	*/
+	output [31:0] multdiv_remainder;						assign multdiv_remainder = multDiv_remainder_X;
+	output multdiv_output_has_error;						assign multdiv_output_has_error = multdiv_output_has_error_X;
+	output multdiv_checker_is_enabled;					assign multdiv_checker_is_enabled = multdiv_checker_is_enabled_X;
 	
 	
 	
@@ -978,16 +991,35 @@ wire [31:0] multDiv_status_X;
 wire multDiv_inputRDY_X;
 wire multDiv_resultRDY_X;
 
-multdiv	multdiv1(.data_operandA(dataA_X), 
+/*ECE 554 Remainder:*/
+wire [31:0] multDiv_remainder_X;
+wire multdiv_output_has_error_X;
+wire multdiv_checker_is_enabled_X;
+
+multdiv multdiv1( .data_operandA(dataA_X), 
 						.data_operandB(aluSrc_select_X[15:0]), 
 						.ctrl_MULT(mult_ctrl_X), 
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock), 
-						.data_result(multDiv_result_X), 
+						.data_result(multDiv_result_X),
+						.out_remainder(multDiv_remainder_X),
 						.data_exception(multDiv_status_1bit_X), 
 						.data_inputRDY(multDiv_inputRDY_X), 
 						.data_resultRDY(multDiv_resultRDY_X)
 );
+
+/**
+* ECE 554 Mult-div ARGUS CHECKER:
+*/
+multdiv_checker multdiv_argus_checker(	.inA(dataA_X),
+													.inB(aluSrc_select_X[15:0]), 
+													.inMultDivResult(multDiv_result_X), 
+													.inOpcode(aluOpcode_X), 
+													.inRemainder(multDiv_remainder_X), 
+													.outError(multdiv_output_has_error_X), 
+													.enable(multdiv_checker_is_enabled_X)
+);
+
 
 genvar i19;
 generate
@@ -1983,11 +2015,12 @@ endmodule
 *
 */
 
-module multdiv(data_operandA, data_operandB, ctrl_MULT, ctrl_DIV, clock, data_result, data_exception, data_inputRDY, data_resultRDY);
+module multdiv(data_operandA, data_operandB, ctrl_MULT, ctrl_DIV, clock, data_result, out_remainder, data_exception, data_inputRDY, data_resultRDY);
    input signed [31:0] data_operandA;
    input signed [15:0] data_operandB;
    input ctrl_MULT, ctrl_DIV, clock;             
    output signed [31:0] data_result; 
+	output [31:0] out_remainder;
    output data_exception, data_inputRDY, data_resultRDY;
 	wire [2:0] datainput_readys, dataresult_readys;
 	wire signed [31:0] results[2:0];
@@ -2020,7 +2053,7 @@ module multdiv(data_operandA, data_operandB, ctrl_MULT, ctrl_DIV, clock, data_re
 	mult mult1(data_operandA, data_operandB, my_tristates[1], mult_exception, clock, my_tristates2[1], my_tristates3[1]);
 	// Get result
 	//assign mult_result = initial_data;
-	div div1(data_operandA, data_operandB, my_tristates[2], clock, my_tristates2[2], my_tristates3[2]);
+	div div1(data_operandA, data_operandB, my_tristates[2], clock, my_tristates2[2], my_tristates3[2], out_remainder);
 	
 	assign data_exception = ((~|data_operandB[15:0] & ctrl_DIV) | (mult_exception & ctrl_MULT));
 //	assign data_inputRDY = 1'b1;
@@ -2060,12 +2093,13 @@ endmodule
 
 
 
-module div(data_operandA, data_operandB, result, clock, datainput_ready, dataoutput_ready);
+module div(data_operandA, data_operandB, result, clock, datainput_ready, dataoutput_ready, outputRemainder);
 	input signed [31:0] data_operandA;
 	input signed [15:0] data_operandB;
 	input clock;
 	output signed [31:0] result;
 	output datainput_ready, dataoutput_ready;
+	output [31:0] outputRemainder; assign outputRemainder = remainder[0];
 
 	wire[32:0] dff_array;
 	// wire that is nor of all dffs
@@ -2637,3 +2671,91 @@ endmodule
 * ###########################
 */
 
+module multdiv_checker(inA, inB, inMultDivResult, inOpcode, inRemainder, outError, enable);
+	/**
+	* Refer to Figure 4. Multiplier/Divider Sub-Checker in Argus paper
+	* TODO: Modulo operation currently uses Verilog's built in operand %. Need to implement using combinational logic.
+	*/
+	
+	input signed [31:0] inA;
+	input signed [15:0] inB;
+	// Opcodes:
+		// Mult -- 00110
+		// Div  -- 00111
+	input [4:0] inOpcode;
+	input signed [31:0] inMultDivResult;
+	input [31:0] inRemainder;		// TODO: determine if signed or unsigned
+	output outError;
+	output enable;
+	
+	// Constants:
+	wire [31:0] zero_32bit;						assign zero_32bit = 32'b00000000000000000000000000000000;
+	wire [31:0] mersenne_5;						assign mersenne_5 = 32'b00000000000000000000000000011111;
+	wire [31:0] negate_Remainder;				assign negate_Remainder = ~inRemainder;
+	wire [31:0] negative_Remainder;			abl17_adder_32bit negativeRemainderAdder(.a(negate_Remainder), 
+																											  .b(zero_32bit), 
+																											  .cin(is_instruction_division), 
+																											  .sum(negative_Remainder)
+														);
+	
+	// Multiplication Opcode
+	wire [4:0] opcode_mult;						assign opcode_mult = 5'b00110;
+	// Division Opcode
+	wire [4:0] opcode_div;						assign opcode_div = 5'b00111;
+	
+	// &([] ~^ []) determines whether two values are exactly equal
+	wire is_instruction_multiplication;		assign is_instruction_multiplication = &(inOpcode ~^ opcode_mult);
+	wire is_instruction_division;				assign is_instruction_division = &(inOpcode ~^ opcode_div);
+	
+	// Determine whether to enable the output of the checker. In other words, if opcodes are neither 00110 nor 00111, disable.
+	assign enable = is_instruction_multiplication | is_instruction_division;
+	
+	/**
+	* Based on Figure 4 in Argus paper:
+	*	- mux1 refers to leftmost mux
+	*	- mux2 refers to middle mux
+	*	- mux3 refers to rightmost mux
+	*
+	* In each of these implementations, select bits are:
+	*  - 0 represents multiplication
+	*  - 1 represents division
+	*/
+	wire [31:0] mux1_output, mux2_output, mux3_output;
+	mux_2to1 mux1(			.in0(inA), 
+								.in1(inMultDivResult), 
+								.select(is_instruction_division), 
+								.out(mux1_output)
+	);
+	mux_2to1 mux2(			.in0(inMultDivResult), 
+								.in1(inA), 
+								.select(is_instruction_division),
+								.out(mux2_output)
+	);
+	mux_2to1 mux3(			.in0(zero_32bit), 
+								.in1(negate_Remainder), 
+								.select(is_instruction_division), 
+								.out(mux3_output)
+	);
+	
+	/**
+	* Based on Figure 4 in Argus paper:
+	*	- mod1 refers to leftmost modM
+	* 	- mod2 refers to first from left modM
+	* 	- mod3 refers to second from left modM
+	*	- mod4 refers to rightmost modM
+	*/
+	wire [31:0] mod1, mod2, mod3, mod4;
+	assign mod1 = mux1_output % mersenne_5;
+	assign mod2 = inB % mersenne_5;
+	assign mod3 = mux2_output % mersenne_5;
+	assign mod4 = mux3_output % mersenne_5;
+	
+	wire[31:0] mult_result, add_result;
+	assign mult_result = mod1 * mod2; //TODO: Change this
+	assign add_result = mod3 + mod4; //TODO: change this
+	
+	wire[31:0] final_candidate_1, final_candidate_2;
+	assign final_candidate_1 = mult_result % mersenne_5;
+	assign final_candidate_2 = add_result % mersenne_5;
+	assign outError = ~&(final_candidate_2 ~^ final_candidate_1);
+endmodule
