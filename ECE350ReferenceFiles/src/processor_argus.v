@@ -92,6 +92,9 @@ module processor_argus(button_drop_in, button_cycle_in, clock, reset, ps2_key_pr
 ,						multdiv_remainder
 ,						multdiv_output_has_error
 ,						multdiv_checker_is_enabled
+,						adder_has_error
+,						sra_has_error
+,						sll_has_error
 );
 
 	input				button_drop_in, button_cycle_in;
@@ -205,6 +208,9 @@ module processor_argus(button_drop_in, button_cycle_in, clock, reset, ps2_key_pr
 	output [31:0] multdiv_remainder;						assign multdiv_remainder = multDiv_remainder_X;
 	output multdiv_output_has_error;						assign multdiv_output_has_error = multdiv_output_has_error_X;
 	output multdiv_checker_is_enabled;					assign multdiv_checker_is_enabled = multdiv_checker_is_enabled_X;
+	output adder_has_error; 								assign adder_has_error = adder_has_error_X;
+	output sra_has_error;									assign sra_has_error = sra_has_error_X;
+	output sll_has_error;									assign sll_has_error = sll_has_error_X;
 	
 	
 	
@@ -1040,8 +1046,12 @@ abl17_alu myabl17_alu(		.data_operandA(dataA_X),
 									.ctrl_shiftamt(shamt_X), 
 									.data_result(alu_result_X), 
 									.isNotEqual(a_ne_b_X), 
-									.isLessThan(a_lt_b_X)
+									.isLessThan(a_lt_b_X),
+									.adder_has_error(adder_has_error_X),
+									.sra_has_error(sra_has_error_X),
+									.sll_has_error(sll_has_error_X)
 );
+
 
 /* Cyc Module: */
 wire [31:0] cyc_result_X;
@@ -1489,11 +1499,20 @@ module register(dataInput, clk, clr, inEnable, regOutput);
 	
 endmodule
 
-module abl17_alu(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_shiftamt, data_result, isNotEqual, isLessThan);
+/*
+,						adder_checker_is_enabled
+,						shift_checker_is_enabled
+,						adder_has_error
+,						sra_has_error
+,						sll_has_error
+*/
+
+module abl17_alu(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_shiftamt, data_result, isNotEqual, isLessThan, adder_has_error, sra_has_error, sll_has_error);
    input [31:0] data_operandA, data_operandB;
    input [4:0] ctrl_ALUopcode, ctrl_shiftamt;
    output [31:0] data_result;
    output isNotEqual, isLessThan;
+	output adder_has_error, sra_has_error, sll_has_error;
 	
 	// OPCODES:
 	// ADD: 00000
@@ -1570,6 +1589,21 @@ module abl17_alu(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_shiftamt, da
 	assign isLessThan = (data_operandA[31] & !(data_operandB[31])) | 
 								(adder_result[31] & !(data_operandA[31]) & !(data_operandB[31])) |
 								(adder_result[31] & data_operandA[31] & data_operandB[31]); //Look at MSB because like... 2's complement
+								
+								
+	/* ECE 554 Checkers Here */
+	
+	wire adder_error, sra_error, sll_error;
+	assign adder_has_error = adder_error;
+	assign sra_has_error = sra_error;
+	assign sll_has_error = sll_error;
+	
+	adder_checker my_checker(.a(data_operandA), .b(notB_mux_result), .cin(subOpcode_cin), .sum(adder_result), .error(adder_error));
+	sra_checker my_sra_checker(.a(data_operandA), .ctrl_shiftamt(ctrl_shiftamt), .sra_result(sra_result), .err(sra_error));
+	sll_checker my_sll_checker(.a(data_operandA), .ctrl_shiftamt(ctrl_shiftamt), .sll_result(sll_result), .err(sll_error));
+
+	
+	
 	
 endmodule
 
@@ -2759,3 +2793,76 @@ module multdiv_checker(inA, inB, inMultDivResult, inOpcode, inRemainder, outErro
 	assign final_candidate_2 = add_result % mersenne_5;
 	assign outError = ~&(final_candidate_2 ~^ final_candidate_1);
 endmodule
+
+
+// Add/Subtract/SRA/SLL Subcheckers
+module adder_checker(a, b, cin, sum, error);
+	input[31:0] a;
+	input[31:0] b;
+	input cin;
+	input[31:0] sum;
+	
+	output error;
+	
+	wire cout[31:0];
+	wire[31:0] and_gate_inputs;
+	// first element
+	one_bit_subchecker one_bit_subchecker_0(.a(a[0]), .b(b[0]), .cin(cin), .s(sum[0]), .cout(cout[0]), .err(and_gate_inputs[0]));
+	
+	// loop
+	genvar i;
+	generate
+	for (i=1; i<32; i=i+1) begin: loop1
+		one_bit_subchecker one_bit_subchecker_i(.a(a[i]), .b(b[i]), .cin(cout[i-1]), .s(sum[i]), .cout(cout[i]), .err(and_gate_inputs[i]));
+	end
+	endgenerate
+	
+	assign error = |and_gate_inputs;
+	
+endmodule
+
+module one_bit_subchecker(a, b, cin, s, cout, err);
+	input a;
+	input b;
+	input cin;
+	input s;
+	output cout;
+	output err;
+	
+	wire xor1, xor2;
+	assign xor1 = a^b;
+	assign xor2 = xor1^s;
+	assign err = xor2^cin;
+	assign cout = xor1 ? xor2 : b;
+endmodule
+
+
+module sra_checker(a, ctrl_shiftamt, sra_result, err);
+	input [31:0] a, sra_result;
+	input [4:0] ctrl_shiftamt;
+	output err;
+	
+	wire[31:0] shifted_input;
+	wire[31:0] temp;
+	
+	assign temp = a >>> ctrl_shiftamt;
+	assign err = |(temp^sra_result);
+endmodule
+
+module sll_checker(a, ctrl_shiftamt, sll_result, err);
+	input [31:0] a, sll_result;
+	input [4:0] ctrl_shiftamt;
+	output err;
+	
+	wire[31:0] shifted_input;
+	wire[31:0] temp, mask, mask_shifted, masked_result;
+	
+	assign temp = sll_result >>> ctrl_shiftamt;
+	
+	// mask shiftamt bits
+	assign mask = 32'b11111111111111111111111111111111 >> ctrl_shiftamt;
+	assign masked_result = mask & a;
+	
+	assign err = |(temp^masked_result);
+endmodule
+
