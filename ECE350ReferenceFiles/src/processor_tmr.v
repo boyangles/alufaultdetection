@@ -89,12 +89,35 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 /**
 *	ECE 554 FINAL PROJECT OUTPUTS:
 */
+/* TMR for ALU */
 ,						errorDetected_tmr_aluResultX
 ,						invalidOutput_tmr_aluResultX
+,						tmr_alu_result_X
+
 ,						errorDetected_tmr_alu_a_ne_b_X
 ,						invalidOutput_tmr_alu_a_ne_b_X
+,						tmr_a_ne_b_X
+
 ,						errorDetected_tmr_alu_a_lt_b_X
 ,						invalidOutput_tmr_alu_a_lt_b_X
+,						tmr_a_lt_b_X
+
+/* TMR for MultDiv */
+,						errorDetected_tmr_multdivResultX
+,						invalidOutput_tmr_multdivResultX
+,						tmr_multDiv_result_X
+
+,						errorDetected_tmr_multDiv_status_1bit_X
+,						invalidOutput_tmr_multDiv_status_1bit_X
+,						tmr_multDiv_status_1bit_X
+
+,						errorDetected_tmr_multDiv_inputRDY_X
+,						invalidOutput_tmr_multDiv_inputRDY_X
+,						tmr_multDiv_inputRDY_X
+
+,						errorDetected_tmr_multDiv_resultRDY_X
+,						invalidOutput_tmr_multDiv_resultRDY_X
+,						tmr_multDiv_resultRDY_X
 );
 
 	input				button_drop_in, button_cycle_in;
@@ -205,14 +228,35 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 	/**
 	*	ECE 554 Outputs:
 	*/
+	/* TMR for ALU */
 	output errorDetected_tmr_aluResultX;
 	output invalidOutput_tmr_aluResultX;
+	output tmr_alu_result_X;								assign tmr_alu_result_X = alu_result_X;
+	
 	output errorDetected_tmr_alu_a_ne_b_X;
 	output invalidOutput_tmr_alu_a_ne_b_X;
+	output tmr_a_ne_b_X;										assign tmr_a_ne_b_X = a_ne_b_X;
+	
 	output errorDetected_tmr_alu_a_lt_b_X;
 	output invalidOutput_tmr_alu_a_lt_b_X;
+	output tmr_a_lt_b_X;										assign tmr_a_lt_b_X = a_lt_b_X;
 	
-	
+	/* TMR for MultDiv */
+	output errorDetected_tmr_multdivResultX;
+	output invalidOutput_tmr_multdivResultX;
+	output tmr_multDiv_result_X;							assign tmr_multDiv_result_X = multDiv_result_X;
+
+	output errorDetected_tmr_multDiv_status_1bit_X;
+	output invalidOutput_tmr_multDiv_status_1bit_X;
+	output tmr_multDiv_status_1bit_X;					assign tmr_multDiv_status_1bit_X = multDiv_status_1bit_X;
+
+	output errorDetected_tmr_multDiv_inputRDY_X;
+	output invalidOutput_tmr_multDiv_inputRDY_X;
+	output tmr_multDiv_inputRDY_X;						assign tmr_multDiv_inputRDY_X = multDiv_inputRDY_X;
+
+	output errorDetected_tmr_multDiv_resultRDY_X;
+	output invalidOutput_tmr_multDiv_resultRDY_X;
+	output tmr_multDiv_resultRDY_X;						assign tmr_multDiv_resultRDY_X = multDiv_resultRDY_X;
 	
 	
 //	assign lcd_write = ps2_key_pressed & reset;
@@ -998,16 +1042,105 @@ wire [31:0] multDiv_status_X;
 wire multDiv_inputRDY_X;
 wire multDiv_resultRDY_X;
 
+
+/**
+* TMR-MultDiv with MultDiv module:
+*/
+wire [31:0] multDiv_result_X_tmr1, multDiv_result_X_tmr2, multDiv_result_X_tmr3;
+wire multDiv_status_1bit_X_tmr1, multDiv_status_1bit_X_tmr2, multDiv_status_1bit_X_tmr3;
+wire multDiv_inputRDY_X_tmr1, multDiv_inputRDY_X_tmr2, multDiv_inputRDY_X_tmr3;
+wire multDiv_resultRDY_X_tmr1, multDiv_resultRDY_X_tmr2, multDiv_resultRDY_X_tmr3;
+
 multdiv	multdiv1(.data_operandA(dataA_X), 
 						.data_operandB(aluSrc_select_X[15:0]), 
 						.ctrl_MULT(mult_ctrl_X), 
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock), 
-						.data_result(multDiv_result_X), 
-						.data_exception(multDiv_status_1bit_X), 
-						.data_inputRDY(multDiv_inputRDY_X), 
-						.data_resultRDY(multDiv_resultRDY_X)
+						.data_result(multDiv_result_X_tmr1), 
+						.data_exception(multDiv_status_1bit_X_tmr1), 
+						.data_inputRDY(multDiv_inputRDY_X_tmr1), 
+						.data_resultRDY(multDiv_resultRDY_X_tmr1)
 );
+
+multdiv	multdiv2(.data_operandA(dataA_X), 
+						.data_operandB(aluSrc_select_X[15:0]), 
+						.ctrl_MULT(mult_ctrl_X), 
+						.ctrl_DIV(div_ctrl_X), 
+						.clock(clock), 
+						.data_result(multDiv_result_X_tmr2), 
+						.data_exception(multDiv_status_1bit_X_tmr2), 
+						.data_inputRDY(multDiv_inputRDY_X_tmr2), 
+						.data_resultRDY(multDiv_resultRDY_X_tmr2)
+);
+
+multdiv	multdiv3(.data_operandA(dataA_X), 
+						.data_operandB(aluSrc_select_X[15:0]), 
+						.ctrl_MULT(mult_ctrl_X), 
+						.ctrl_DIV(div_ctrl_X), 
+						.clock(clock), 
+						.data_result(multDiv_result_X_tmr3), 
+						.data_exception(multDiv_status_1bit_X_tmr3), 
+						.data_inputRDY(multDiv_inputRDY_X_tmr3), 
+						.data_resultRDY(multDiv_resultRDY_X_tmr3)
+);
+
+/* TMR for 32-bit multDiv_result_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_multdivResultX
+		2. invalidOutput_tmr_multdivResultX
+		3. tmr_multDiv_result_X
+*/
+generic_ternary_voter_32bit tmrModule_multDiv_result_X(	.a(multDiv_result_X_tmr1), 
+																	.b(multDiv_result_X_tmr2), 
+																	.c(multDiv_result_X_tmr3), 
+																	.errorDetected(errorDetected_tmr_multdivResultX), 
+																	.invalidOutput(invalidOutput_tmr_multdivResultX), 
+																	.out(multDiv_result_X)
+);
+
+/* TMR for 1-bit multDiv_status_1bit_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_multDiv_status_1bit_X
+		2. invalidOutput_tmr_multDiv_status_1bit_X
+		3. tmr_multDiv_status_1bit_X
+*/
+generic_ternary_voter_1bit tmrModule_multDiv_status_1bit_X(	.a(multDiv_status_1bit_X_tmr1), 
+																		.b(multDiv_status_1bit_X_tmr2), 
+																		.c(multDiv_status_1bit_X_tmr3), 
+																		.errorDetected(errorDetected_tmr_multDiv_status_1bit_X), 
+																		.invalidOutput(invalidOutput_tmr_multDiv_status_1bit_X), 
+																		.out(multDiv_status_1bit_X)
+);
+
+/* TMR for 32-bit multDiv_inputRDY_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_multDiv_inputRDY_X
+		2. invalidOutput_tmr_multDiv_inputRDY_X
+		3. tmr_multDiv_inputRDY_X
+*/
+generic_ternary_voter_1bit tmrModule_multDiv_inputRDY_X(	.a(multDiv_inputRDY_X_tmr1), 
+																	.b(multDiv_inputRDY_X_tmr2), 
+																	.c(multDiv_inputRDY_X_tmr3), 
+																	.errorDetected(errorDetected_tmr_multDiv_inputRDY_X), 
+																	.invalidOutput(invalidOutput_tmr_multDiv_inputRDY_X), 
+																	.out(multDiv_inputRDY_X)
+);
+
+/* TMR for 32-bit multDiv_resultRDY_X
+*	Outputs to outside world two wires:
+		1. errorDetected_tmr_multDiv_resultRDY_X
+		2. invalidOutput_tmr_multDiv_resultRDY_X
+		3. tmr_multDiv_resultRDY_X
+*/
+generic_ternary_voter_1bit tmrModule_multDiv_resultRDY_X(	.a(multDiv_resultRDY_X_tmr1), 
+																		.b(multDiv_resultRDY_X_tmr2), 
+																		.c(multDiv_resultRDY_X_tmr3), 
+																		.errorDetected(errorDetected_tmr_multDiv_resultRDY_X), 
+																		.invalidOutput(invalidOutput_tmr_multDiv_resultRDY_X), 
+																		.out(multDiv_resultRDY_X)
+);
+
+
 
 genvar i19;
 generate
@@ -1061,8 +1194,9 @@ abl17_alu myabl17_alu_tmr3(	.data_operandA(dataA_X),
 *	Outputs to outside world two wires:
 		1. errorDetected_tmr_aluResultX
 		2. invalidOutput_tmr_aluResultX
+		3. tmr_alu_result_X
 */
-generic_ternary_voter_32bit tmr_alu_resultX(	.a(alu_result_X_tmr1), 
+generic_ternary_voter_32bit tmrModule_alu_resultX(	.a(alu_result_X_tmr1), 
 															.b(alu_result_X_tmr2), 
 															.c(alu_result_X_tmr3), 
 															.errorDetected(errorDetected_tmr_aluResultX), 
@@ -1074,8 +1208,9 @@ generic_ternary_voter_32bit tmr_alu_resultX(	.a(alu_result_X_tmr1),
 *	Outputs to outside world two wires:
 		1. errorDetected_tmr_alu_a_ne_b_X
 		2. invalidOutput_tmr_alu_a_ne_b_X
+		3. tmr_a_ne_b_X
 */
-generic_ternary_voter_1bit tmr_alu_a_ne_b_X(	.a(a_ne_b_X_tmr1), 
+generic_ternary_voter_1bit tmrModule_alu_a_ne_b_X(	.a(a_ne_b_X_tmr1), 
 															.b(a_ne_b_X_tmr2), 
 															.c(a_ne_b_X_tmr3), 
 															.errorDetected(errorDetected_tmr_alu_a_ne_b_X), 
@@ -1087,8 +1222,9 @@ generic_ternary_voter_1bit tmr_alu_a_ne_b_X(	.a(a_ne_b_X_tmr1),
 *	Outputs to outside world two wires:
 		1. errorDetected_tmr_alu_a_lt_b_X
 		2. invalidOutput_tmr_alu_a_lt_b_X
+		3. tmr_a_lt_b_X
 */
-generic_ternary_voter_1bit tmr_alu_a_lt_b_X(	.a(a_lt_b_X_tmr1), 
+generic_ternary_voter_1bit tmrModule_alu_a_lt_b_X(	.a(a_lt_b_X_tmr1), 
 															.b(a_lt_b_X_tmr2), 
 															.c(a_lt_b_X_tmr3), 
 															.errorDetected(errorDetected_tmr_alu_a_lt_b_X), 
