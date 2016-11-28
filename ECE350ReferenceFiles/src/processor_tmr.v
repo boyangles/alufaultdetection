@@ -1030,7 +1030,21 @@ wire a_ne_b_X_tmr1, a_lt_b_X_tmr1;
 wire a_ne_b_X_tmr2, a_lt_b_X_tmr2;
 wire a_ne_b_X_tmr3, a_lt_b_X_tmr3;
 
-abl17_alu myabl17_alu_tmr1(	.data_operandA(dataA_X), 
+/*
+* wire faults!
+*/
+wire [31:0] data_operandA_bit4;
+wire [31:0] data_operandB_bit13;
+
+fault fault1(.currVal(dataA_X[4]), .stuckAtVal(1'b1), .ctrl(1'b1), .outVal(data_operandA_bit4[4]));
+assign data_operandA_bit4[31:5] = dataA_X[31:5];
+assign data_operandA_bit4[3:0] = dataA_X[3:0];
+
+fault fault2(.currVal(aluSrc_select_X[13]), .stuckAtVal(1'b1), .ctrl(1'b1), .outVal(data_operandB_bit13[13]));
+assign data_operandB_bit13[31:14] = aluSrc_select_X[31:14];
+assign data_operandB_bit13[12:0] = aluSrc_select_X[12:0];
+
+abl17_alu myabl17_alu_tmr1(	.data_operandA(new_operandA), 
 										.data_operandB(aluSrc_select_X), 
 										.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
 										.ctrl_shiftamt(shamt_X), 
