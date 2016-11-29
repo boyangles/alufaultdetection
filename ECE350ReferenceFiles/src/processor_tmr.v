@@ -122,7 +122,7 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 
 /* Output for all registers of regFile */
 ,						reg1_output
-,						reg2_output
+/*,						reg2_output
 ,						reg3_output
 ,						reg4_output
 ,						reg5_output
@@ -143,7 +143,7 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 ,						reg28_output
 ,						reg29_output
 ,						reg30_output
-,						reg31_output
+,						reg31_output*/
 );
 
 	input				button_drop_in, button_cycle_in;
@@ -286,7 +286,7 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 	
 	/*Register outputs for all registers in the regFile*/
 	output [31:0] reg1_output;							assign reg1_output = regFileOutput1_D;
-	output [31:0] reg2_output;							assign reg2_output = regFileOutput2_D;
+	/*output [31:0] reg2_output;							assign reg2_output = regFileOutput2_D;
 	output [31:0] reg3_output;							assign reg3_output = regFileOutput3_D;
 	output [31:0] reg4_output;							assign reg4_output = regFileOutput4_D;
 	output [31:0] reg5_output;							assign reg5_output = regFileOutput5_D;
@@ -306,7 +306,7 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 	output [31:0] reg28_output;						assign reg28_output = regFileOutput28_D;
 	output [31:0] reg29_output;						assign reg29_output = regFileOutput29_D;
 	output [31:0] reg30_output;						assign reg30_output = regFileOutput30_D;
-	output [31:0] reg31_output;						assign reg31_output = regFileOutput31_D;
+	output [31:0] reg31_output;						assign reg31_output = regFileOutput31_D;*/
 	
 	
 //	assign lcd_write = ps2_key_pressed & reset;
