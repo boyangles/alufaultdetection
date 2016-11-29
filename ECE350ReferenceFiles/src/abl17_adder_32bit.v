@@ -29,7 +29,7 @@ module abl17_adder_32bit_fault(a, b, cin, ctrl_flip_16, ctrl_flip_4, sum);
 	wire [1:0] prop1;
 	
 	abl17_adder_16bit_fault adder_16bit_1(.a(a[15:0]), .b(b[15:0]), .cin(cin), .ctrl_flip_16(ctrl_flip_16), .ctrl_flip_4(1'b0), .gen(gen1[0]), .prop(prop1[0]), .sum(sum[15:0]));
-	abl17_adder_16bit_fault adder_16bit_2(.a(a[31:16]), .b(b[31:16]), .cin(cin1[0]), .ctrl_flip_16(1'b0), .ctrl_flip_4(ctrl_flilp_4), .gen(gen1[1]), .prop(prop1[1]), .sum(sum[31:16]));
+	abl17_adder_16bit_fault adder_16bit_2(.a(a[31:16]), .b(b[31:16]), .cin(cin1[0]), .ctrl_flip_16(1'b0), .ctrl_flip_4(ctrl_flip_4), .gen(gen1[1]), .prop(prop1[1]), .sum(sum[31:16]));
 
 	assign cin1[0] = gen1[0] | (prop1[0] & cin);
 	assign cin1[1] = gen1[1] | (gen1[0] & prop1[1]) | (cin & prop1[0] & prop1[1]) ;
