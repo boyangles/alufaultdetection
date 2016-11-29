@@ -535,7 +535,30 @@ regFile regFile_D(		.clock(clock),
 								.data_readReg21(regFileOutput21_D), 
 								.data_readReg22(regFileOutput22_D), 
 								.data_readReg23(regFileOutput23_D), 
-								.data_readReg24(regFileOutput24_D)
+								.data_readReg24(regFileOutput24_D),
+								
+								.data_readReg1(regFileOutput1_D),
+								.data_readReg2(regFileOutput2_D),
+								.data_readReg3(regFileOutput3_D),
+								.data_readReg4(regFileOutput4_D),
+								.data_readReg5(regFileOutput5_D),
+								.data_readReg6(regFileOutput6_D),
+								.data_readReg7(regFileOutput7_D),
+								.data_readReg8(regFileOutput8_D),
+								.data_readReg9(regFileOutput9_D),
+								.data_readReg10(regFileOutput10_D),
+								.data_readReg11(regFileOutput11_D),
+								.data_readReg12(regFileOutput12_D),
+								.data_readReg13(regFileOutput13_D),
+								.data_readReg14(regFileOutput14_D),
+								.data_readReg15(regFileOutput15_D),
+								.data_readReg25(regFileOutput25_D),
+								.data_readReg26(regFileOutput26_D),
+								.data_readReg27(regFileOutput27_D),
+								.data_readReg28(regFileOutput28_D),
+								.data_readReg29(regFileOutput29_D),
+								.data_readReg30(regFileOutput30_D),
+								.data_readReg31(regFileOutput31_D)
 );
 
 /* 
@@ -1048,11 +1071,11 @@ wire a_ne_b_X, a_lt_b_X;
 wire [31:0] data_operandA_bit4;
 wire [31:0] data_operandB_bit13;
 
-flip_bit fault1(.currVal(dataA_X[4]), .ctrl(1'b1), .outVal(data_operandA_bit4[4]));
+flip_bit fault1(.currVal(dataA_X[4]), .ctrl(1'b0), .outVal(data_operandA_bit4[4]));
 assign data_operandA_bit4[31:5] = dataA_X[31:5];
 assign data_operandA_bit4[3:0] = dataA_X[3:0];
 
-flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(1'b1), .outVal(data_operandB_bit13[13]));
+flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(1'b0), .outVal(data_operandB_bit13[13]));
 assign data_operandB_bit13[31:14] = aluSrc_select_X[31:14];
 assign data_operandB_bit13[12:0] = aluSrc_select_X[12:0];
 
@@ -1063,6 +1086,7 @@ abl17_alu_argus_fault my_alu(.data_operandA(data_operandA_bit4),
 									.ctrl_shiftamt(shamt_X), 
 									.ctrl_adder_flip1(1'b0), 
 									.ctrl_adder_flip2(1'b0),
+									.ctrl_shift_flip(1'b0),
 									.data_result(alu_result_X), 
 									.isNotEqual(a_ne_b_X), 
 									.isLessThan(a_lt_b_X),
@@ -1660,12 +1684,26 @@ endmodule
 ////////////////////////////////////////////////////////////////////////////////
 
 module regFile(clock, ctrl_writeEnable, ctrl_reset, ctrl_writeReg, ctrl_readRegA, ctrl_readRegB, data_writeReg, data_readRegA, data_readRegB,
-					data_readReg16, data_readReg17, data_readReg18, data_readReg19, data_readReg20, data_readReg21, data_readReg22, data_readReg23, data_readReg24);
+					data_readReg16, data_readReg17, data_readReg18, data_readReg19, data_readReg20, data_readReg21, data_readReg22, data_readReg23, data_readReg24,
+					
+					data_readReg1, data_readReg2, data_readReg3, data_readReg4, data_readReg5,
+					data_readReg6, data_readReg7, data_readReg8, data_readReg9, data_readReg10,
+					data_readReg11, data_readReg12, data_readReg13, data_readReg14, data_readReg15,
+					data_readReg25, data_readReg26, data_readReg27, data_readReg28, data_readReg29,
+					data_readReg30, data_readReg31
+);
    input clock, ctrl_writeEnable, ctrl_reset;
    input [4:0] ctrl_writeReg, ctrl_readRegA, ctrl_readRegB;
    input [31:0] data_writeReg;
    output [31:0] data_readRegA, data_readRegB;
 	output [31:0] data_readReg16, data_readReg17, data_readReg18, data_readReg19, data_readReg20, data_readReg21, data_readReg22, data_readReg23, data_readReg24;
+
+	/*554 outputs:*/
+	output [31:0] 	data_readReg1, data_readReg2, data_readReg3, data_readReg4, data_readReg5,
+						data_readReg6, data_readReg7, data_readReg8, data_readReg9, data_readReg10,
+						data_readReg11, data_readReg12, data_readReg13, data_readReg14, data_readReg15,
+						data_readReg25, data_readReg26, data_readReg27, data_readReg28, data_readReg29,
+						data_readReg30, data_readReg31;
 	
 	wire [31:0] rdVal_decoderOutput, rs1Val_decoderOutput, rs2Val_decoderOutput;
 	
@@ -1734,6 +1772,30 @@ module regFile(clock, ctrl_writeEnable, ctrl_reset, ctrl_writeReg, ctrl_readRegA
 	assign data_readReg22 = regOutput[22];
 	assign data_readReg23 = regOutput[23];
 	assign data_readReg24 = regOutput[24];
+	
+	/*ECE 554 Extension:*/
+	assign data_readReg1 = regOutput[1];
+	assign data_readReg2 = regOutput[2];
+	assign data_readReg3 = regOutput[3];
+	assign data_readReg4 = regOutput[4];
+	assign data_readReg5 = regOutput[5];
+	assign data_readReg6 = regOutput[6];
+	assign data_readReg7 = regOutput[7];
+	assign data_readReg8 = regOutput[8];
+	assign data_readReg9 = regOutput[9];
+	assign data_readReg10 = regOutput[10];
+	assign data_readReg11 = regOutput[11];
+	assign data_readReg12 = regOutput[12];
+	assign data_readReg13 = regOutput[13];
+	assign data_readReg14 = regOutput[14];
+	assign data_readReg15 = regOutput[15];
+	assign data_readReg25 = regOutput[25];
+	assign data_readReg26 = regOutput[26];
+	assign data_readReg27 = regOutput[27];
+	assign data_readReg28 = regOutput[28];
+	assign data_readReg29 = regOutput[29];
+	assign data_readReg30 = regOutput[30];
+	assign data_readReg31 = regOutput[31];
 			
 endmodule
 

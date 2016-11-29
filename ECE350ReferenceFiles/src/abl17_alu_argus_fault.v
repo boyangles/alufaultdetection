@@ -7,10 +7,10 @@
 ,						sll_has_error
 */
 
-module abl17_alu_argus_fault(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_shiftamt, ctrl_adder_flip1, ctrl_adder_flip2, data_result, isNotEqual, isLessThan, adder_has_error, sra_has_error, sll_has_error);
+module abl17_alu_argus_fault(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_shiftamt, ctrl_adder_flip1, ctrl_adder_flip2, ctrl_shift_flip, data_result, isNotEqual, isLessThan, adder_has_error, sra_has_error, sll_has_error);
    input [31:0] data_operandA, data_operandB;
    input [4:0] ctrl_ALUopcode, ctrl_shiftamt;
-	input ctrl_adder_flip1, ctrl_adder_flip2;
+	input ctrl_adder_flip1, ctrl_adder_flip2, ctrl_shift_flip;
    output [31:0] data_result;
    output isNotEqual, isLessThan;
 	output adder_has_error, sra_has_error, sll_has_error;
@@ -57,11 +57,15 @@ module abl17_alu_argus_fault(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_
 	wire [31:0] or_result;
 	assign or_result = data_operandA | data_operandB;
 	
+	wire [3:0] flip_shiftamt;
+	flip_bit fault_ho(.currVal(ctrl_shiftamt[0]), .ctrl(ctrl_shift_flip), .outVal(flip_shiftamt[0]));
+	assign flip_shiftamt[3:1] = ctrl_shiftamt[3:1];
+	
 	wire[31:0] sll_result;
-	barrel_sll_32bit barrel_sll(.in(data_operandA), .shamt(ctrl_shiftamt), .out(sll_result)); // SLL for A!!!
+	barrel_sll_32bit barrel_sll(.in(data_operandA), .shamt(flip_shiftamt), .out(sll_result)); // SLL for A!!!
 	
 	wire[31:0] sra_result;
-	barrel_sra_32bit barrel_sra(.in(data_operandA), .shamt(ctrl_shiftamt), .out(sra_result)); // SRA for A!!!
+	barrel_sra_32bit barrel_sra(.in(data_operandA), .shamt(flip_shiftamt), .out(sra_result)); // SRA for A!!!
 	
 	wire [31:0] decoder_output;
 	decoder1 myDecoder(.inputBin(ctrl_ALUopcode), .outputHot(decoder_output));
