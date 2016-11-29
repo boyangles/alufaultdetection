@@ -1,0 +1,94 @@
+module mult(data_operandA, data_operandB, result, mult_exception, clock, datainput_ready, dataoutput_ready);
+	input signed [31:0] data_operandA;
+   input signed [15:0] data_operandB;
+	input clock;
+	output signed [31:0] result;
+	output datainput_ready, dataoutput_ready;
+	output mult_exception;
+	wire [15:0] exception;	
+	wire signed [48:0] initial_data[8:0], temp_wire[7:0]; // Initialize
+	wire signed [31:0] shift_wire[7:0], alu_result_wire[7:0]; // Shift result and ALU result
+	wire signed [7:0] ctrl_shift, ctrl_alu, alu_enable; // enable and ctrl bits
+	
+	// Create the initial block
+	assign initial_data[0][48:17] = 1'b0; // initial 32 bits = 0
+	assign initial_data[0][16:1]  = data_operandB; // next 16 bits = multiplier
+	assign initial_data[0][0] = 1'b0; // add the trailing 0
+	
+	wire[9:0] dff_array;
+	//assign dff_array[8:0] = 0;
+	
+	// wire that is nor of all dffs
+	wire nor_wire = ~|dff_array;
+	
+//	assign datainput_ready = nor_wire;
+	assign datainput_ready = 1'b1;
+
+	
+	my_dff dff5(.d(nor_wire), .aclr(1'b0), .clk(clock), .q(dff_array[0]));
+	genvar i, j, k, l;
+	generate
+	for (i=0; i<8; i=i+1) begin: loop1
+		// Takes the last 3 bits and sends them to control
+		multdiv_control mdc1(.sel(initial_data[i][2:0]), 
+									.ctrl_shift(ctrl_shift[i]), 
+									.ctrl_alu(ctrl_alu[i]), 
+									.alu_enable(alu_enable[i]));
+									
+		// Perform shift if necessary
+		assign shift_wire[i] = ctrl_shift[i] ? (data_operandA << 1) : data_operandA;
+		
+		// Perform alu op if necessary
+		multdiv_alu alu(.alu_enable(alu_enable[i]), 
+						.ctrl_alu(ctrl_alu[i]), 
+						.inA(initial_data[i][48:17]), 
+						.inB(shift_wire[i]), 
+						.out(alu_result_wire[i]));
+						
+		// replace first 32 bits with alu result
+		for (j=48; j>16; j=j-1) begin: loop2
+			assign temp_wire[i][j] = alu_result_wire[i][j-17];
+		end
+		
+		for (k=16; k>-1; k=k-1) begin: loop3
+			assign temp_wire[i][k] = initial_data[i][k];
+		end
+		// Shift by 2
+		assign initial_data[i+1] = temp_wire[i]>>>2;
+		my_dff dff6(.d(dff_array[i]), .aclr(1'b0), .clk(clock), .q(dff_array[i+1]));
+	end
+	my_dff dff7(.d(dff_array[8]), .aclr(1'b0), .clk(clock), .q(dff_array[9]));
+//	assign dataoutput_ready = dff_array[9];
+	assign dataoutput_ready = 1'b1;
+	assign result = initial_data[8][32:1];
+	
+	wire [15:0] exception_wire;
+	for (l=32; l<48; l=l+1) begin: loop4
+		assign exception_wire[l-32] = initial_data[8][l] ^ (data_operandA[31] ^ data_operandB[15]);
+	end
+	assign mult_exception = |exception_wire;
+	//assign mult_exception = &(initial_data[8][47:32]) & (data_operandA[31] ^ data_operandB[15]));
+	
+	endgenerate
+endmodule
+
+
+module multdiv_control(sel, ctrl_shift, ctrl_alu, alu_enable);
+	input[2:0] sel;
+	output ctrl_shift, ctrl_alu, alu_enable;
+	assign ctrl_shift = (sel[2] & ~sel[1] & ~sel[0]) | (~sel[2] & sel[1] & sel[0]);
+	assign ctrl_alu = (sel[2] & ~sel[1] & ~sel[0]) | (sel[2] & sel[1] & ~sel[0]) | (sel[2] & ~sel[1] & sel[0]);
+	assign alu_enable = ~((~sel[2] & ~sel[1] & ~sel[0]) | (sel[2] & sel[1] & sel[0]));
+endmodule
+
+module multdiv_alu(alu_enable, ctrl_alu, inA, inB, out);
+	input alu_enable, ctrl_alu;
+	input signed [31:0] inA, inB;
+	wire signed [31:0] result_add, result_sub, result_mux;
+	output signed [31:0] out;
+	thirtytwo_bit_adder ba1(.A(inA), .B(inB), .C_in(1'b0), .S(result_add));
+	thirtytwo_bit_adder ba2(.A(inA), .B(~inB), .C_in(1'b1), .S(result_sub));
+	mux2to1 muxxy(.inA(result_add), .inB(result_sub), .sel(ctrl_alu), .out(result_mux));
+	assign out = alu_enable ? result_mux : inA;
+endmodule
+

@@ -1092,11 +1092,13 @@ wire [31:0] multDiv_remainder_X;
 wire multdiv_output_has_error_X;
 wire multdiv_checker_is_enabled_X;
 
-multdiv multdiv1( .data_operandA(dataA_X), 
+multdiv_fault multdiv1( .data_operandA(data_operandA_bit4), 
 						.data_operandB(aluSrc_select_X[15:0]), 
 						.ctrl_MULT(mult_ctrl_X), 
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock), 
+						.ctrl_flip_mult(1'b0),
+						.ctrl_flip_div(1'b0),
 						.data_result(multDiv_result_X),
 						.out_remainder(multDiv_remainder_X),
 						.data_exception(multDiv_status_1bit_X), 
@@ -1131,10 +1133,28 @@ assign multDiv_status_X[0] = multDiv_status_1bit_X;
 wire [31:0] alu_result_X;
 wire a_ne_b_X, a_lt_b_X;
 
-abl17_alu myabl17_alu(		.data_operandA(dataA_X), 
-									.data_operandB(aluSrc_select_X), 
+/*
+* wire faults!
+*/
+wire [31:0] data_operandA_bit4;
+wire [31:0] data_operandB_bit13;
+
+flip_bit fault1(.currVal(dataA_X[4]), .ctrl(1'b0), .outVal(data_operandA_bit4[4]));
+assign data_operandA_bit4[31:5] = dataA_X[31:5];
+assign data_operandA_bit4[3:0] = dataA_X[3:0];
+
+flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(1'b0), .outVal(data_operandB_bit13[13]));
+assign data_operandB_bit13[31:14] = aluSrc_select_X[31:14];
+assign data_operandB_bit13[12:0] = aluSrc_select_X[12:0];
+
+
+abl17_alu_argus_fault my_alu(.data_operandA(data_operandA_bit4), 
+									.data_operandB(data_operandB_bit13), 
 									.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
 									.ctrl_shiftamt(shamt_X), 
+									.ctrl_adder_flip1(1'b0), 
+									.ctrl_adder_flip2(1'b0),
+									.ctrl_shift_flip(1'b0),
 									.data_result(alu_result_X), 
 									.isNotEqual(a_ne_b_X), 
 									.isLessThan(a_lt_b_X),
@@ -1590,205 +1610,6 @@ module register(dataInput, clk, clr, inEnable, regOutput);
 	
 endmodule
 
-/*
-,						adder_checker_is_enabled
-,						shift_checker_is_enabled
-,						adder_has_error
-,						sra_has_error
-,						sll_has_error
-*/
-
-module abl17_alu(data_operandA, data_operandB, ctrl_ALUopcode, ctrl_shiftamt, data_result, isNotEqual, isLessThan, adder_has_error, sra_has_error, sll_has_error);
-   input [31:0] data_operandA, data_operandB;
-   input [4:0] ctrl_ALUopcode, ctrl_shiftamt;
-   output [31:0] data_result;
-   output isNotEqual, isLessThan;
-	output adder_has_error, sra_has_error, sll_has_error;
-	
-	// OPCODES:
-	// ADD: 00000
-	// SUBTRACT: 00001
-	// AND: 00010
-	// OR: 00011
-	// SLL: 00100
-	// SRA: 00101
-	
-	parameter add_opcode = 0;
-	parameter subtract_opcode = 1;
-	parameter and_opcode = 2;
-	parameter or_opcode = 3;
-	parameter sll_opcode = 4;
-	parameter sra_opcode = 5;
-	
-	wire [31:0] negateB;
-	assign negateB = ~data_operandB;
-
-	wire subOpcode_cin;
-	assign subOpcode_cin =
-			ctrl_ALUopcode == subtract_opcode ? 1'b1 : //Subtraction
-			1'b0; //Not Subtraction
-			
-	wire [31:0] notB_mux_result;
-	mux_2to1 notB_mux(.in0(data_operandB), .in1(negateB), .select(subOpcode_cin), .out(notB_mux_result));
-	
-	// FIRST LEVEL Gs and Ps respectively
-//	wire [31:0] and_AB_result;
-//	assign and_AB_result = data_operandA & notB_mux_result;
-//	
-//	wire [31:0] or_AB_result;
-//	assign or_AB_result = data_operandA | notB_mux_result;
-	
-	wire[31:0] adder_result;
-	abl17_adder_32bit adder1(.a(data_operandA), .b(notB_mux_result), .cin(subOpcode_cin), .sum(adder_result));
-	
-	wire [31:0] and_result;
-	assign and_result = data_operandA & data_operandB;
-	
-	wire [31:0] or_result;
-	assign or_result = data_operandA | data_operandB;
-	
-	wire[31:0] sll_result;
-	barrel_sll_32bit barrel_sll(.in(data_operandA), .shamt(ctrl_shiftamt), .out(sll_result)); // SLL for A!!!
-	
-	wire[31:0] sra_result;
-	barrel_sra_32bit barrel_sra(.in(data_operandA), .shamt(ctrl_shiftamt), .out(sra_result)); // SRA for A!!!
-	
-	wire [31:0] decoder_output;
-	decoder1 myDecoder(.inputBin(ctrl_ALUopcode), .outputHot(decoder_output));
-	
-	wire [31:0] tristate_input [31:0];
-	
-	assign tristate_input[0] = adder_result;
-	assign tristate_input[1] = adder_result;
-	assign tristate_input[2] = and_result;
-	assign tristate_input[3] = or_result;
-	assign tristate_input[4] = sll_result;
-	assign tristate_input[5] = sra_result;
-	
-	genvar j3;
-	generate
-		for (j3 = 0; j3 < 32; j3 = j3 + 1) begin: loop1j3
-			tristate myTristate(.in(tristate_input[j3]), .oe(decoder_output[j3]), .out(data_result));
-		end 
-	endgenerate
-	
-//	assign isNotEqual =
-//			adder_result == (32'b0) ? (1'b0) :
-//			(1'b1); //adderResult != 0
-	assign isNotEqual = |(adder_result);
-			
-	assign isLessThan = (data_operandA[31] & !(data_operandB[31])) | 
-								(adder_result[31] & !(data_operandA[31]) & !(data_operandB[31])) |
-								(adder_result[31] & data_operandA[31] & data_operandB[31]); //Look at MSB because like... 2's complement
-								
-								
-	/* ECE 554 Checkers Here */
-	
-	wire adder_error, sra_error, sll_error;
-	assign adder_has_error = adder_error;
-	assign sra_has_error = sra_error;
-	assign sll_has_error = sll_error;
-	
-	adder_checker my_checker(.a(data_operandA), .b(notB_mux_result), .cin(subOpcode_cin), .sum(adder_result), .error(adder_error));
-	sra_checker my_sra_checker(.a(data_operandA), .ctrl_shiftamt(ctrl_shiftamt), .sra_result(sra_result), .err(sra_error));
-	sll_checker my_sll_checker(.a(data_operandA), .ctrl_shiftamt(ctrl_shiftamt), .sll_result(sll_result), .err(sll_error));
-
-	
-	
-	
-endmodule
-
-////////////////////////////////////////////////////
-////////////////////////////////////////////////////
-
-module abl17_adder_32bit(a, b, cin, sum);
-	input [31:0] a;
-	input [31:0] b;
-	input cin;
-	output [31:0] sum;
-	
-	wire [1:0] cin1;
-	wire [1:0] gen1;
-	wire [1:0] prop1;
-	
-	abl17_adder_16bit adder_16bit_1(.a(a[15:0]), .b(b[15:0]), .cin(cin), .gen(gen1[0]), .prop(prop1[0]), .sum(sum[15:0]));
-	abl17_adder_16bit adder_16bit_2(.a(a[31:16]), .b(b[31:16]), .cin(cin1[0]), .gen(gen1[1]), .prop(prop1[1]), .sum(sum[31:16]));
-
-	assign cin1[0] = gen1[0] | (prop1[0] & cin);
-	assign cin1[1] = gen1[1] | (gen1[0] & prop1[1]) | (cin & prop1[0] & prop1[1]) ;
-endmodule
-
-////////////////////////////////////////////////////
-
-module abl17_adder_16bit(a, b, cin, gen, prop, sum);
-	input [15:0] a;
-	input [15:0] b;
-	input cin;
-	output gen;
-	output prop;
-	output [15:0] sum;
-	
-	wire [3:0] cin1;
-	wire [3:0] gen1;
-	wire [3:0] prop1;
-	
-	abl17_adder_4bit adder_4bit_1(.a(a[3:0]), .b(b[3:0]), .cin(cin), .gen(gen1[0]), .prop(prop1[0]), .sum(sum[3:0]));
-	abl17_adder_4bit adder_4bit_2(.a(a[7:4]), .b(b[7:4]), .cin(cin1[0]), .gen(gen1[1]), .prop(prop1[1]), .sum(sum[7:4]));
-	abl17_adder_4bit adder_4bit_3(.a(a[11:8]), .b(b[11:8]), .cin(cin1[1]), .gen(gen1[2]), .prop(prop1[2]), .sum(sum[11:8]));
-	abl17_adder_4bit adder_4bit_4(.a(a[15:12]), .b(b[15:12]), .cin(cin1[2]), .gen(gen1[3]), .prop(prop1[3]), .sum(sum[15:12]));
-
-	assign cin1[0] = gen1[0] | (prop1[0] & cin);
-	assign cin1[1] = gen1[1] | (gen1[0] & prop1[1]) | (cin & prop1[0] & prop1[1]) ;
-	assign cin1[2] = gen1[2] | (gen1[1] & prop1[2]) | (gen1[0] & prop1[1] & prop1[2]) | (cin & prop1[0] & prop1[1] & prop1[2]);
-	assign cin1[3] = gen1[3] | (gen1[2] & prop1[3]) | (gen1[1] & prop1[2] & prop1[3]) | (gen1[0] & prop1[1] & prop1[2] & prop1[3]) | (cin & prop1[0] & prop1[1] & prop1[2] & prop1[3]);
-	
-	assign gen = gen1[3] | (gen1[2] & prop1[3]) | (gen1[1] & prop1[3] & prop1[2]) | (gen1[0] & prop1[3] & prop1[2] & prop1[1]);
-	assign prop = prop1[0] & prop1[1] & prop1[2] & prop1[3];
-endmodule
-
-////////////////////////////////////////////////////
-
-module abl17_adder_4bit(a, b, cin, gen, prop, sum);
-	input [3:0] a;
-	input [3:0] b;
-	input cin;
-	output gen;
-	output prop;
-	output [3:0] sum;
-	
-	wire [3:0] cin1, gen1, prop1;
-	
-	abl17_adder_1bit adder1(.a(a[0]), .b(b[0]), .cin(cin), .gen(gen1[0]), .prop(prop1[0]), .sum(sum[0]));
-	abl17_adder_1bit adder2(.a(a[1]), .b(b[1]), .cin(cin1[0]), .gen(gen1[1]), .prop(prop1[1]), .sum(sum[1]));
-	abl17_adder_1bit adder3(.a(a[2]), .b(b[2]), .cin(cin1[1]), .gen(gen1[2]), .prop(prop1[2]), .sum(sum[2]));
-	abl17_adder_1bit adder4(.a(a[3]), .b(b[3]), .cin(cin1[2]), .gen(gen1[3]), .prop(prop1[3]), .sum(sum[3]));
-
-	assign cin1[0] = gen1[0] | (prop1[0] & cin);
-	assign cin1[1] = gen1[1] | (gen1[0] & prop1[1]) | (cin & prop1[0] & prop1[1]) ;
-	assign cin1[2] = gen1[2] | (gen1[1] & prop1[2]) | (gen1[0] & prop1[1] & prop1[2]) | (cin & prop1[0] & prop1[1] & prop1[2]);
-	assign cin1[3] = gen1[3] | (gen1[2] & prop1[3]) | (gen1[1] & prop1[2] & prop1[3]) | (gen1[0] & prop1[1] & prop1[2] & prop1[3]) | (cin & prop1[0] & prop1[1] & prop1[2] & prop1[3]);
-	
-	assign gen = gen1[3] | (gen1[2] & prop1[3]) | (gen1[1] & prop1[3] & prop1[2]) | (gen1[0] & prop1[3] & prop1[2] & prop1[1]);
-	assign prop = prop1[0] & prop1[1] & prop1[2] & prop1[3];
-	
-endmodule
-
-////////////////////////////////////////////////////
-
-module abl17_adder_1bit(a, b, cin, gen, prop, sum);
-	input a;
-	input b;
-	input cin;
-	output gen;
-	output prop;
-	output sum;
-	
-	assign gen = a & b;
-	assign prop = a | b;
-	assign sum = (~a & ~b & cin) | (~a & b & ~cin) | (a & ~b & ~cin) | (a & b & cin);
-endmodule
-
-////////////////////////////////////////////////////
 
 module barrel_sll_32bit(in, shamt, out);
 	input [31:0] in;
@@ -2159,70 +1980,6 @@ endmodule
 
 
 
-/**
-*
-*
-*
-*
-*
-*
-*
-*
-* 			Andrew's MultDiv Code:
-*
-*
-*
-*
-*
-*
-*
-*/
-
-module multdiv(data_operandA, data_operandB, ctrl_MULT, ctrl_DIV, clock, data_result, out_remainder, data_exception, data_inputRDY, data_resultRDY);
-   input signed [31:0] data_operandA;
-   input signed [15:0] data_operandB;
-   input ctrl_MULT, ctrl_DIV, clock;             
-   output signed [31:0] data_result; 
-	output [31:0] out_remainder;
-   output data_exception, data_inputRDY, data_resultRDY;
-	wire [2:0] datainput_readys, dataresult_readys;
-	wire signed [31:0] results[2:0];
-	wire [1:0] enable;
-	wire[31:0]my_tristates[3:0];
-	wire my_tristates2[3:0];
-	wire my_tristates3[3:0];
-	wire [3:0] decoder_result;
-	
-	genvar i;
-	generate
-	for (i=0; i<4; i=i+1) begin: loop1
-		tristate my_tristate(.in(my_tristates[i]), .oe(decoder_result[i]), .out(data_result));
-		tristate1 my_tristate2(.in(my_tristates2[i]), .enable(decoder_result[i]), .out(data_inputRDY));
-		tristate1 my_tristate3(.in(my_tristates3[i]), .enable(decoder_result[i]), .out(data_resultRDY));
-	end
-	endgenerate
-	
-	assign my_tristates[0] = 32'b0;
-	assign my_tristates2[0] = 1'b1;
-	assign my_tristates3[0] = 1'b0;
-	
-	assign enable[0] = ctrl_MULT;
-	assign enable[1] = ctrl_DIV;
-	
-	// 0 = do nothing, 1 = mult, 2 = div
-	decoder8 mydecoder(enable, decoder_result);
-	
-	wire mult_exception;
-	mult mult1(data_operandA, data_operandB, my_tristates[1], mult_exception, clock, my_tristates2[1], my_tristates3[1]);
-	// Get result
-	//assign mult_result = initial_data;
-	div div1(data_operandA, data_operandB, my_tristates[2], clock, my_tristates2[2], my_tristates3[2], out_remainder);
-	
-	assign data_exception = ((~|data_operandB[15:0] & ctrl_DIV) | (mult_exception & ctrl_MULT));
-//	assign data_inputRDY = 1'b1;
-//	assign data_resultRDY = 1'b1;
-	//assign data_result[31:0] = results[2];
-endmodule
 
 // 5 to 32 decoder
 module decoder32(in, out);

@@ -4,3 +4,10 @@ module fault(currVal, stuckAtVal, ctrl, outVal);
 	
 	assign outVal = ctrl ? stuckAtVal : currVal;
 endmodule
+
+module flip_bit(currVal, ctrl, outVal);
+	input currVal, ctrl;
+	output outVal;
+	
+	assign outVal = ctrl ? ~currVal : currVal;
+endmodule
