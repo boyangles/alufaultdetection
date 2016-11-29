@@ -1,4 +1,4 @@
-module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out, lcd_write, lcd_data, debug_data, debug_addr, out1, out2
+module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out/*, lcd_write, lcd_data, debug_data, debug_addr, out1, out2*/
 /* Fetch outputs */
 //,						inPC_F_output 						// Output to the PC latch for the next instruction [31:0]
 //,						stall_ctrl_output					// Describes whether to stall on a data hazard
@@ -118,6 +118,7 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	input 			clock, reset, ps2_key_pressed;
 	input 	[7:0]	ps2_out;
 	
+	/*
 	output 			lcd_write;
 	output 	[31:0] 	lcd_data;
 	
@@ -126,7 +127,15 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	output	[11:0]	debug_addr;
 	
 	output [31:0] out1, out2;
+	*/
+	wire 			lcd_write;
+	wire 	[31:0] 	lcd_data;
 	
+	// GRADER OUTPUTS - YOU MUST CONNECT TO YOUR DMEM
+	wire 	[31:0] 	debug_data;
+	wire	[11:0]	debug_addr;
+	
+	wire [31:0] out1, out2;
 	
 	//
 	//
