@@ -1,4 +1,4 @@
-module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out, lcd_write, lcd_data, debug_data, debug_addr, out1, out2
+module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed, ps2_out/*, lcd_write, lcd_data, debug_data, debug_addr, out1, out2*/
 /* Fetch outputs */
 //,						inPC_F_output 						// Output to the PC latch for the next instruction [31:0]
 //,						stall_ctrl_output					// Describes whether to stall on a data hazard
@@ -84,12 +84,41 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 ,						reg22_output
 ,						reg23_output
 ,						reg24_output
+
+/**
+*	ECE 554 FINAL PROJECT OUTPUTS:
+*/
+/* Output for all registers of regFile */
+,						reg1_output
+//,						reg2_output
+//,						reg3_output
+//,						reg4_output
+//,						reg5_output
+//,						reg6_output
+//,						reg7_output
+//,						reg8_output
+//,						reg9_output
+//,						reg10_output
+//,						reg11_output
+//,						reg12_output
+//,						reg13_output
+//,						reg14_output
+//,						reg15_output
+
+//,						reg25_output
+//,						reg26_output
+//,						reg27_output
+//,						reg28_output
+//,						reg29_output
+//,						reg30_output
+//,						reg31_output
 );
 
 	input				button_drop_in, button_cycle_in;
 	input 			clock, reset, ps2_key_pressed;
 	input 	[7:0]	ps2_out;
 	
+	/*
 	output 			lcd_write;
 	output 	[31:0] 	lcd_data;
 	
@@ -98,7 +127,15 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	output	[11:0]	debug_addr;
 	
 	output [31:0] out1, out2;
+	*/
+	wire 			lcd_write;
+	wire 	[31:0] 	lcd_data;
 	
+	// GRADER OUTPUTS - YOU MUST CONNECT TO YOUR DMEM
+	wire 	[31:0] 	debug_data;
+	wire	[11:0]	debug_addr;
+	
+	wire [31:0] out1, out2;
 	
 	//
 	//
@@ -192,7 +229,32 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	output [31:0] reg24_output;							assign reg24_output = regFileOutput24_D;
 	
 	
-	
+	/**
+	*	ECE 554 Outputs:
+	*/
+	/*Register outputs for all registers in the regFile*/
+	output [31:0] reg1_output;							assign reg1_output = regFileOutput1_D;
+	//output [31:0] reg2_output;							assign reg2_output = regFileOutput2_D;
+	//output [31:0] reg3_output;							assign reg3_output = regFileOutput3_D;
+	//output [31:0] reg4_output;							assign reg4_output = regFileOutput4_D;
+	//output [31:0] reg5_output;							assign reg5_output = regFileOutput5_D;
+	//output [31:0] reg6_output;							assign reg6_output = regFileOutput6_D;
+	//output [31:0] reg7_output;							assign reg7_output = regFileOutput7_D;
+	//output [31:0] reg8_output;							assign reg8_output = regFileOutput8_D;
+	//output [31:0] reg9_output;							assign reg9_output = regFileOutput9_D;
+	//output [31:0] reg10_output;						assign reg10_output = regFileOutput10_D;
+	//output [31:0] reg11_output;						assign reg11_output = regFileOutput11_D;
+	//output [31:0] reg12_output;						assign reg12_output = regFileOutput12_D;
+	//output [31:0] reg13_output;						assign reg13_output = regFileOutput13_D;
+	//output [31:0] reg14_output;						assign reg14_output = regFileOutput14_D;
+	//output [31:0] reg15_output;						assign reg15_output = regFileOutput15_D;
+	//output [31:0] reg25_output;						assign reg25_output = regFileOutput25_D;
+	//output [31:0] reg26_output;						assign reg26_output = regFileOutput26_D;
+	//output [31:0] reg27_output;						assign reg27_output = regFileOutput27_D;
+	//output [31:0] reg28_output;						assign reg28_output = regFileOutput28_D;
+	//output [31:0] reg29_output;						assign reg29_output = regFileOutput29_D;
+	//output [31:0] reg30_output;						assign reg30_output = regFileOutput30_D;
+	//output [31:0] reg31_output;						assign reg31_output = regFileOutput31_D;
 	
 	
 //	assign lcd_write = ps2_key_pressed & reset;
@@ -499,6 +561,16 @@ wire [31:0] regFileOutput16_D, regFileOutput17_D, regFileOutput18_D,
 				regFileOutput19_D, regFileOutput20_D, regFileOutput21_D, 
 				regFileOutput22_D, regFileOutput23_D, regFileOutput24_D;
 
+/*554 extension:*/
+wire [31:0] regFileOutput1_D, regFileOutput2_D, regFileOutput3_D, 
+				regFileOutput4_D, regFileOutput5_D, regFileOutput6_D, 
+				regFileOutput7_D, regFileOutput8_D, regFileOutput9_D,
+				regFileOutput10_D, regFileOutput11_D, regFileOutput12_D, 
+				regFileOutput13_D, regFileOutput14_D, regFileOutput15_D, 
+				regFileOutput25_D, regFileOutput26_D, regFileOutput27_D,
+				regFileOutput28_D, regFileOutput29_D, regFileOutput30_D,
+				regFileOutput31_D;
+
 regFile regFile_D(		.clock(clock), 
 								.ctrl_writeEnable(regWrite_ctrl_W), 
 								.ctrl_reset(reset), 
@@ -540,7 +612,6 @@ regFile regFile_D(		.clock(clock),
 								.data_readReg29(regFileOutput29_D),
 								.data_readReg30(regFileOutput30_D),
 								.data_readReg31(regFileOutput31_D)
-
 );
 
 /* 
