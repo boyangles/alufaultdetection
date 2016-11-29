@@ -1110,7 +1110,8 @@ multdiv multdiv1( .data_operandA(dataA_X),
 multdiv_checker multdiv_argus_checker(	.inA(dataA_X),
 													.inB(aluSrc_select_X[15:0]), 
 													.inMultDivResult(multDiv_result_X), 
-													.inOpcode(aluOpcode_X), 
+													.ctrl_MULT(mult_ctrl_X), 
+													.ctrl_DIV(div_ctrl_X), 
 													.inRemainder(multDiv_remainder_X), 
 													.outError(multdiv_output_has_error_X), 
 													.enable(multdiv_checker_is_enabled_X)
@@ -2833,7 +2834,7 @@ endmodule
 * ###########################
 */
 
-module multdiv_checker(inA, inB, inMultDivResult, inOpcode, inRemainder, outError, enable);
+module multdiv_checker(inA, inB, inMultDivResult, ctrl_MULT, ctrl_DIV, inRemainder, outError, enable);
 	/**
 	* Refer to Figure 4. Multiplier/Divider Sub-Checker in Argus paper
 	* TODO: Modulo operation currently uses Verilog's built in operand %. Need to implement using combinational logic.
@@ -2842,9 +2843,8 @@ module multdiv_checker(inA, inB, inMultDivResult, inOpcode, inRemainder, outErro
 	input signed [31:0] inA;
 	input signed [15:0] inB;
 	// Opcodes:
-		// Mult -- 00110
-		// Div  -- 00111
-	input [4:0] inOpcode;
+	input ctrl_MULT, ctrl_DIV;
+	
 	input signed [31:0] inMultDivResult;
 	input [31:0] inRemainder;		// TODO: determine if signed or unsigned
 	output outError;
@@ -2860,14 +2860,9 @@ module multdiv_checker(inA, inB, inMultDivResult, inOpcode, inRemainder, outErro
 																											  .sum(negative_Remainder)
 														);
 	
-	// Multiplication Opcode
-	wire [4:0] opcode_mult;						assign opcode_mult = 5'b00110;
-	// Division Opcode
-	wire [4:0] opcode_div;						assign opcode_div = 5'b00111;
-	
 	// &([] ~^ []) determines whether two values are exactly equal
-	wire is_instruction_multiplication;		assign is_instruction_multiplication = &(inOpcode ~^ opcode_mult);
-	wire is_instruction_division;				assign is_instruction_division = &(inOpcode ~^ opcode_div);
+	wire is_instruction_multiplication;		assign is_instruction_multiplication = ctrl_MULT;
+	wire is_instruction_division;				assign is_instruction_division = ctrl_DIV;
 	
 	// Determine whether to enable the output of the checker. In other words, if opcodes are neither 00110 nor 00111, disable.
 	assign enable = is_instruction_multiplication | is_instruction_division;
