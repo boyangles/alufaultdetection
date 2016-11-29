@@ -21,7 +21,7 @@ module generic_ternary_voter_32bit(a, b, c, errorDetected, invalidOutput, out);
 	assign a_nequals_c = |a_equals_c_32_bits;
 	
 	assign errorDetected = a_nequals_b | b_nequals_c | a_nequals_c;
-	assign invalidOutput = (a_nequals_b & b_nequals_c) | (a_nequals_b & a_nequals_c) | (b_nequals_c & a_nequals_c);
+	assign invalidOutput = a_nequals_b & b_nequals_c & a_nequals_c;
 	
 	assign out = (a & b) | (b & c) | (a & c);
 endmodule

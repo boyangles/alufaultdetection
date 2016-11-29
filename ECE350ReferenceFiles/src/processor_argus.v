@@ -2889,7 +2889,7 @@ module multdiv_checker(inA, inB, inMultDivResult, ctrl_MULT, ctrl_DIV, inRemaind
 								.out(mux2_output)
 	);
 	mux_2to1 mux3(			.in0(zero_32bit), 
-								.in1(negate_Remainder), 
+								.in1(negative_Remainder), 
 								.select(is_instruction_division), 
 								.out(mux3_output)
 	);
