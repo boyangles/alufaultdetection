@@ -87,8 +87,20 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 
 
 /**
-*	ECE 554 FINAL PROJECT OUTPUTS:
+*	ECE 554 FINAL PROJECT:
 */
+
+/* Ctrls for Faults: (inputs) */
+,						flip_adder1
+,						flip_adder2
+,						flip_mult
+,						flip_div
+,						flip_shift
+,						flip_operandA
+,						flip_operandB
+
+
+/*OUTPUTS*/
 /* TMR for ALU */
 ,						errorDetected_tmr_aluResultX
 ,						invalidOutput_tmr_aluResultX
@@ -261,6 +273,12 @@ module processor_tmr(button_drop_in, button_cycle_in, clock, reset, ps2_key_pres
 	output [31:0] reg23_output;							assign reg23_output = regFileOutput23_D;
 	output [31:0] reg24_output;							assign reg24_output = regFileOutput24_D;
 	
+	/**
+	* 	ECE 554 Fault Inputs:
+	*/
+	input flip_adder1, flip_adder2, flip_mult, flip_div, flip_shift, flip_operandA, flip_operandB;
+	
+
 	/**
 	*	ECE 554 Outputs:
 	*/
@@ -1149,7 +1167,7 @@ multdiv_fault	multdiv1(.data_operandA(dataA_X),
 						.ctrl_MULT(mult_ctrl_X), 
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock), 
-						.ctrl_flip_mult(1'b0),
+						.ctrl_flip_mult(flip_mult),
 						.ctrl_flip_div(1'b0),
 						.data_result(multDiv_result_X_tmr1), 
 						.data_exception(multDiv_status_1bit_X_tmr1), 
@@ -1163,7 +1181,7 @@ multdiv_fault	multdiv2(.data_operandA(dataA_X),
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock),
 						.ctrl_flip_mult(1'b0),
-						.ctrl_flip_div(1'b1),	
+						.ctrl_flip_div(flip_div),	
 						.data_result(multDiv_result_X_tmr2), 
 						.data_exception(multDiv_status_1bit_X_tmr2), 
 						.data_inputRDY(multDiv_inputRDY_X_tmr2), 
@@ -1268,11 +1286,11 @@ wire a_ne_b_X_tmr3, a_lt_b_X_tmr3;
 wire [31:0] data_operandA_bit4;
 wire [31:0] data_operandB_bit13;
 
-flip_bit fault1(.currVal(dataA_X[4]), .ctrl(1'b0), .outVal(data_operandA_bit4[4]));
+flip_bit fault1(.currVal(dataA_X[4]), .ctrl(flip_operandA), .outVal(data_operandA_bit4[4]));
 assign data_operandA_bit4[31:5] = dataA_X[31:5];
 assign data_operandA_bit4[3:0] = dataA_X[3:0];
 
-flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(1'b0), .outVal(data_operandB_bit13[13]));
+flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(flip_operandB), .outVal(data_operandB_bit13[13]));
 assign data_operandB_bit13[31:14] = aluSrc_select_X[31:14];
 assign data_operandB_bit13[12:0] = aluSrc_select_X[12:0];
 
@@ -1280,9 +1298,9 @@ abl17_alu_fault my_alu_tmr1(	.data_operandA(data_operandA_bit4),
 										.data_operandB(aluSrc_select_X), 
 										.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
 										.ctrl_shiftamt(shamt_X),
-										.ctrl_adder_flip1(1'b0), 
-										.ctrl_adder_flip2(1'b0),
-										.ctrl_shift_flip(1'b0),
+										.ctrl_adder_flip1(flip_adder1), 
+										.ctrl_adder_flip2(flip_adder2),
+										.ctrl_shift_flip(flip_shift),
 										.data_result(alu_result_X_tmr1), 
 										.isNotEqual(a_ne_b_X_tmr1), 
 										.isLessThan(a_lt_b_X_tmr1)

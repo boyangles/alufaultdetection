@@ -87,8 +87,19 @@ module processor_argus(button_drop_in, button_cycle_in, clock, reset, ps2_key_pr
 
 
 /**
-* ECE 554 FINAL PROJECT Outputs:
+* ECE 554 FINAL PROJECT:
 */
+
+/* Ctrls for Faults: (inputs) */
+,						flip_adder1
+,						flip_adder2
+,						flip_mult
+,						flip_div
+,						flip_shift
+,						flip_operandA
+,						flip_operandB
+
+/* OUTPUTS */
 ,						multdiv_remainder
 ,						multdiv_output_has_error
 ,						multdiv_checker_is_enabled
@@ -236,6 +247,13 @@ module processor_argus(button_drop_in, button_cycle_in, clock, reset, ps2_key_pr
 	output [31:0] reg23_output;							assign reg23_output = regFileOutput23_D;
 	output [31:0] reg24_output;							assign reg24_output = regFileOutput24_D;
 	
+	
+	/**
+	* 	ECE 554 Fault Inputs:
+	*/
+	input flip_adder1, flip_adder2, flip_mult, flip_div, flip_shift, flip_operandA, flip_operandB;
+	
+
 	/**
 	*	ECE 554 Final Project Outputs:
 	*/
@@ -1097,8 +1115,8 @@ multdiv_fault multdiv1( .data_operandA(data_operandA_bit4),
 						.ctrl_MULT(mult_ctrl_X), 
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock), 
-						.ctrl_flip_mult(1'b0),
-						.ctrl_flip_div(1'b0),
+						.ctrl_flip_mult(flip_mult),
+						.ctrl_flip_div(flip_div),
 						.data_result(multDiv_result_X),
 						.out_remainder(multDiv_remainder_X),
 						.data_exception(multDiv_status_1bit_X), 
@@ -1139,11 +1157,11 @@ wire a_ne_b_X, a_lt_b_X;
 wire [31:0] data_operandA_bit4;
 wire [31:0] data_operandB_bit13;
 
-flip_bit fault1(.currVal(dataA_X[4]), .ctrl(1'b0), .outVal(data_operandA_bit4[4]));
+flip_bit fault1(.currVal(dataA_X[4]), .ctrl(flip_operandA), .outVal(data_operandA_bit4[4]));
 assign data_operandA_bit4[31:5] = dataA_X[31:5];
 assign data_operandA_bit4[3:0] = dataA_X[3:0];
 
-flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(1'b0), .outVal(data_operandB_bit13[13]));
+flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(flip_operandB), .outVal(data_operandB_bit13[13]));
 assign data_operandB_bit13[31:14] = aluSrc_select_X[31:14];
 assign data_operandB_bit13[12:0] = aluSrc_select_X[12:0];
 
@@ -1152,9 +1170,9 @@ abl17_alu_argus_fault my_alu(.data_operandA(data_operandA_bit4),
 									.data_operandB(data_operandB_bit13), 
 									.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
 									.ctrl_shiftamt(shamt_X), 
-									.ctrl_adder_flip1(1'b0), 
-									.ctrl_adder_flip2(1'b0),
-									.ctrl_shift_flip(1'b0),
+									.ctrl_adder_flip1(flip_adder1), 
+									.ctrl_adder_flip2(flip_adder2),
+									.ctrl_shift_flip(flip_shift),
 									.data_result(alu_result_X), 
 									.isNotEqual(a_ne_b_X), 
 									.isLessThan(a_lt_b_X),

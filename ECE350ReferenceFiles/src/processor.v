@@ -86,8 +86,18 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 ,						reg24_output
 
 /**
-*	ECE 554 FINAL PROJECT OUTPUTS:
+*	ECE 554 FINAL PROJECT:
 */
+
+/* Ctrls for Faults (inputs):*/
+,						flip_adder1
+,						flip_adder2
+,						flip_mult
+,						flip_div
+,						flip_shift
+,						flip_operandA
+,						flip_operandB
+
 /* Output for all registers of regFile */
 ,						reg1_output
 //,						reg2_output
@@ -228,6 +238,11 @@ module processor(button_drop_in, button_cycle_in, clock, reset, ps2_key_pressed,
 	output [31:0] reg23_output;							assign reg23_output = regFileOutput23_D;
 	output [31:0] reg24_output;							assign reg24_output = regFileOutput24_D;
 	
+	
+	/**
+	* 	ECE 554 Fault Inputs:
+	*/
+	input flip_adder1, flip_adder2, flip_mult, flip_div, flip_shift, flip_operandA, flip_operandB;
 	
 	/**
 	*	ECE 554 Outputs:
@@ -1078,8 +1093,8 @@ multdiv_fault	multdiv1(.data_operandA(dataA_X),
 						.ctrl_MULT(mult_ctrl_X), 
 						.ctrl_DIV(div_ctrl_X), 
 						.clock(clock), 
-						.ctrl_flip_mult(1'b0),
-						.ctrl_flip_div(1'b0),
+						.ctrl_flip_mult(flip_mult),
+						.ctrl_flip_div(flip_div),
 						.data_result(multDiv_result_X), 
 						.data_exception(multDiv_status_1bit_X), 
 						.data_inputRDY(multDiv_inputRDY_X), 
@@ -1105,7 +1120,7 @@ wire a_ne_b_X, a_lt_b_X;
 wire [31:0] data_operandA_bit4;
 wire [31:0] data_operandB_bit13;
 
-flip_bit fault1(.currVal(dataA_X[4]), .ctrl(1'b0), .outVal(data_operandA_bit4[4]));
+flip_bit fault1(.currVal(dataA_X[4]), .ctrl(flip_operandA), .outVal(data_operandA_bit4[4]));
 genvar i_fault1a;
 generate
 	for (i_fault1a=31; i_fault1a>4; i_fault1a=i_fault1a-1) begin: loop_fault1a
@@ -1119,7 +1134,7 @@ generate
 end
 endgenerate
 
-flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(1'b0), .outVal(data_operandB_bit13[13]));
+flip_bit fault2(.currVal(aluSrc_select_X[13]), .ctrl(flip_operandB), .outVal(data_operandB_bit13[13]));
 genvar i_fault2a;
 generate
 	for (i_fault2a=31; i_fault2a>13; i_fault2a=i_fault2a-1) begin: loop_fault2a
@@ -1137,9 +1152,9 @@ abl17_alu_fault myabl17_alu(	.data_operandA(data_operandA_bit4),
 										.data_operandB(data_operandB_bit13), 
 										.ctrl_ALUopcode(aluOpcodeBranch_select_X), 
 										.ctrl_shiftamt(shamt_X),
-										.ctrl_adder_flip1(1'b0), 
-										.ctrl_adder_flip2(1'b0),
-										.ctrl_shift_flip(1'b1),
+										.ctrl_adder_flip1(flip_adder1), 
+										.ctrl_adder_flip2(flip_adder2),
+										.ctrl_shift_flip(flip_shift),
 										.data_result(alu_result_X), 
 										.isNotEqual(a_ne_b_X), 
 										.isLessThan(a_lt_b_X)
